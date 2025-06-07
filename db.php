@@ -1,12 +1,7 @@
 <?php
-$host = 'localhost';
-$user = 'root';
-$password = '';
-$database = 'simple_blog';
-
-$conn = new mysqli($host, $user, $password, $database);
-
+/** @var mysqli $conn */
+$conn = new mysqli('localhost', 'root', '', 'simple_blog');
 if ($conn->connect_error) {
-    die("Помилка з'єднання з БД: " . $conn->connect_error);
+    die('Помилка з’єднання з БД: ' . $conn->connect_error);
 }
-?>
+$conn->set_charset("utf8mb4");

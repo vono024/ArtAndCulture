@@ -1,60 +1,94 @@
 <?php
 session_start();
 require_once 'db.php';
-
 /** @var mysqli $conn */
 
-$post_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$post = $conn->query("SELECT posts.*, users.username, categories.name AS category 
-                      FROM posts 
-                      JOIN users ON posts.user_id = users.id 
-                      JOIN categories ON posts.category_id = categories.id 
-                      WHERE posts.id = $post_id")->fetch_assoc();
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: index.php");
+    exit;
+}
 
-if (!$post) die("Пост не знайдено");
+$post_id = (int)$_GET['id'];
 
-// Кількість лайків
-$likes = $conn->query("SELECT COUNT(*) AS total FROM likes WHERE post_id = $post_id")->fetch_assoc()['total'];
-$comments = $conn->query("SELECT comments.*, users.username FROM comments 
-                          JOIN users ON comments.user_id = users.id 
-                          WHERE post_id = $post_id ORDER BY created_at DESC");
+$post_stmt = $conn->prepare("SELECT posts.*, users.username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?");
+$post_stmt->bind_param("i", $post_id);
+$post_stmt->execute();
+$post_result = $post_stmt->get_result();
+$post = $post_result->fetch_assoc();
+
+if (!$post) {
+    echo "Пост не знайдено.";
+    exit;
+}
+
+// Отримати коментарі
+$comments = $conn->query("SELECT comments.*, users.username FROM comments JOIN users ON comments.user_id = users.id WHERE post_id = $post_id ORDER BY created_at DESC");
+
+// Отримати кількість лайків
+$likes_result = $conn->query("SELECT COUNT(*) as total FROM likes WHERE post_id = $post_id");
+$likes = $likes_result->fetch_assoc()['total'];
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($post['title']) ?></title>
-    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-<a href="index.php">← Назад</a>
-<h1><?= htmlspecialchars($post['title']) ?></h1>
-<p><small>Автор: <?= htmlspecialchars($post['username']) ?> | Категорія: <?= htmlspecialchars($post['category']) ?> | <?= $post['created_at'] ?></small></p>
-<?php if ($post['image']): ?>
-    <img src="uploads/<?= htmlspecialchars($post['image']) ?>" width="400"><br>
-<?php endif; ?>
-<p><?= nl2br(htmlspecialchars($post['content'])) ?></p>
+<body class="bg-light">
 
-<form method="post" action="like.php">
-    <input type="hidden" name="post_id" value="<?= $post_id ?>">
-    <button type="submit">❤️ Вподобати (<?= $likes ?>)</button>
-</form>
+<div class="container py-5">
+    <a href="index.php" class="btn btn-secondary mb-4">← Назад</a>
 
-<hr>
-<h3>Коментарі</h3>
-<?php if (isset($_SESSION['user'])): ?>
-    <form method="post" action="comment.php">
-        <textarea name="text" placeholder="Ваш коментар..." required></textarea>
-        <input type="hidden" name="post_id" value="<?= $post_id ?>">
-        <button type="submit">Надіслати</button>
-    </form>
-<?php else: ?>
-    <p><a href="login.php">Увійдіть</a>, щоб залишити коментар.</p>
-<?php endif; ?>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="card-title"><?= htmlspecialchars($post['title']) ?></h2>
+            <p class="text-muted">Автор: <?= htmlspecialchars($post['username']) ?> | <?= $post['created_at'] ?></p>
 
-<?php while ($c = $comments->fetch_assoc()): ?>
-    <p><b><?= htmlspecialchars($c['username']) ?></b>: <?= nl2br(htmlspecialchars($c['text'])) ?><br><small><?= $c['created_at'] ?></small></p>
-<?php endwhile; ?>
+            <?php if (!empty($post['image']) && file_exists('uploads/' . $post['image'])): ?>
+                <img src="uploads/<?= htmlspecialchars($post['image']) ?>" class="img-fluid rounded mb-3">
+            <?php endif; ?>
+
+            <p class="card-text"><?= nl2br(htmlspecialchars($post['content'])) ?></p>
+
+            <div class="mt-4">
+                <form method="post" action="like.php" class="d-inline">
+                    <input type="hidden" name="post_id" value="<?= $post_id ?>">
+                    <button class="btn btn-outline-danger">❤️ Лайк (<?= $likes ?>)</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mb-3">Коментарі</h4>
+
+    <?php if ($comments->num_rows === 0): ?>
+        <p class="text-muted">Коментарів ще немає.</p>
+    <?php else: ?>
+        <?php while ($c = $comments->fetch_assoc()): ?>
+            <div class="border rounded p-3 mb-2 bg-white shadow-sm">
+                <strong><?= htmlspecialchars($c['username']) ?></strong>
+                <span class="text-muted small"> | <?= $c['created_at'] ?></span>
+                <p class="mb-0"><?= nl2br(htmlspecialchars($c['text'])) ?></p>
+            </div>
+        <?php endwhile; ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['user_id'])): ?>
+        <form method="post" action="comment.php" class="mt-4">
+            <input type="hidden" name="post_id" value="<?= $post_id ?>">
+            <div class="mb-3">
+                <label class="form-label">Залишити коментар:</label>
+                <textarea name="text" class="form-control" rows="4" required></textarea>
+            </div>
+            <button class="btn btn-primary">💬 Додати</button>
+        </form>
+    <?php else: ?>
+        <p class="mt-4">Щоб додати коментар — <a href="login.php">увійдіть</a>.</p>
+    <?php endif; ?>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

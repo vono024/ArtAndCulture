@@ -1,57 +1,154 @@
-body {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: auto;
-    padding: 20px;
-    background: #f6f6f6;
-}
-
-h1, h2, h3 {
-    color: #333;
-}
-
-a {
-    color: #0066cc;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-.post {
-    background: white;
-    border: 1px solid #ddd;
-    padding: 15px;
-    margin-bottom: 20px;
-}
-
-form input, form textarea, form select {
-    width: 100%;
-    padding: 8px;
-    margin: 5px 0 10px;
+* {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
 }
 
-form button {
-    padding: 10px 15px;
-    background: #2d89ef;
-    color: white;
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to right, #f3f4f6, #e9ebee);
+    color: #2c3e50;
+    padding: 40px;
+    max-width: 960px;
+    margin: auto;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 36px;
+    color: #1f2d3d;
+    margin-bottom: 10px;
+}
+
+nav {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+nav a {
+    text-decoration: none;
+    color: #1abc9c;
+    font-weight: bold;
+    margin: 0 15px;
+    font-size: 18px;
+    transition: 0.3s;
+}
+
+nav a:hover {
+    color: #16a085;
+}
+
+form {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+    margin-bottom: 30px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    background-color: #fafafa;
+}
+
+textarea {
+    min-height: 120px;
+}
+
+button {
+    background: linear-gradient(to right, #1abc9c, #16a085);
     border: none;
+    color: white;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 8px;
     cursor: pointer;
+    transition: 0.3s ease;
 }
 
-form button:hover {
-    background: #1b5fc6;
+button:hover {
+    opacity: 0.9;
 }
 
-img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 10px 0;
+.post {
+    background-color: #fff;
+    padding: 30px;
+    margin-bottom: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease;
 }
 
-hr {
-    margin: 20px 0;
+.post:hover {
+    transform: translateY(-4px);
+}
+
+.post h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #34495e;
+}
+
+.post .meta {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
+}
+
+.post img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.comment {
+    background-color: #f1f1f1;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid #1abc9c;
+    border-radius: 6px;
+}
+
+.comments-section {
+    margin-top: 30px;
+}
+
+.alert {
+    background-color: #ffe0e0;
+    padding: 15px;
+    border-left: 5px solid #e74c3c;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: #c0392b;
+}
+
+.success {
+    background-color: #e0f8f1;
+    padding: 15px;
+    border-left: 5px solid #2ecc71;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: #27ae60;
+}
+
+footer {
+    text-align: center;
+    margin-top: 50px;
+    font-size: 14px;
+    color: #aaa;
 }
