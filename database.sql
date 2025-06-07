@@ -3,7 +3,6 @@ SET SQL_SAFE_UPDATES = 0;
 CREATE DATABASE IF NOT EXISTS simple_blog;
 USE simple_blog;
 
--- Створення таблиць
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -45,13 +44,11 @@ CREATE TABLE IF NOT EXISTS likes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Очистка таблиць у правильному порядку
 DELETE FROM likes;
 DELETE FROM comments;
 DELETE FROM posts;
 DELETE FROM categories;
 
--- Вставка категорій (буде без дублікатів)
 INSERT IGNORE INTO categories (name) VALUES
 ('Кіно'),
 ('Книги'),

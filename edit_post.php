@@ -3,133 +3,125 @@ session_start();
 require_once 'db.php';
 /** @var mysqli $conn */
 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
 if (!isset($_GET['id'])) {
-    header("Location: index.php");
+    header("Location: my_posts.php");
     exit;
 }
 
 $post_id = (int)$_GET['id'];
+$user_id = $_SESSION['user_id'];
 
-// Отримуємо пост для редагування
-$stmt = $conn->prepare("SELECT * FROM posts WHERE id = ?");
-$stmt->bind_param("i", $post_id);
+$message = '';
+
+$stmt = $conn->prepare("SELECT * FROM posts WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $post_id, $user_id);
 $stmt->execute();
 $post_result = $stmt->get_result();
 
 if ($post_result->num_rows === 0) {
-    echo "Пост не знайдено.";
+    header("Location: my_posts.php");
     exit;
 }
 
 $post = $post_result->fetch_assoc();
 
-$title = isset($_POST['title']) ? $_POST['title'] : $post['title'];
-$category_id = isset($_POST['category']) ? (int)$_POST['category'] : (int)$post['category_id'];
-$content = isset($_POST['content']) ? $_POST['content'] : $post['content'];
-$image = isset($_FILES['image']) ? $_FILES['image'] : null;
+$categories_result = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
 
-$errors = [];
-$message = '';
+$title = $post['title'];
+$content = $post['content'];
+$current_category_id = $post['category_id'];
+$image = $post['image'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (empty(trim($title))) {
-        $errors[] = 'Заголовок обов\'язковий';
-    }
-    if (empty($category_id)) {
-        $errors[] = 'Категорія обов\'язкова';
-    }
-    if (empty(trim($content))) {
-        $errors[] = 'Вміст обов\'язковий';
-    }
+    $title = trim($_POST['title']);
+    $content = trim($_POST['content']);
+    $category_id = (int)$_POST['category_id'];
 
-    if (empty($errors)) {
-        $image_name = $post['image'];
-        if ($image && $image['error'] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($image['name'], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-            if (in_array($ext, $allowed)) {
-                $image_name = uniqid() . '.' . $ext;
-                move_uploaded_file($image['tmp_name'], 'uploads/' . $image_name);
-            } else {
-                $errors[] = 'Недопустимий формат зображення.';
+    if (!empty($_FILES['image']['name'])) {
+        $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        if (in_array($ext, $allowed)) {
+            $new_image = uniqid() . '.' . $ext;
+            move_uploaded_file($_FILES['image']['tmp_name'], 'uploads/' . $new_image);
+            if (!empty($image) && file_exists('uploads/' . $image)) {
+                unlink('uploads/' . $image);
             }
+            $image = $new_image;
         }
+    }
 
-        if (empty($errors)) {
-            $stmt = $conn->prepare("UPDATE posts SET title = ?, category_id = ?, content = ?, image = ? WHERE id = ?");
-            $stmt->bind_param("sissi", $title, $category_id, $content, $image_name, $post_id);
-
-            if ($stmt->execute()) {
-                $message = "Пост оновлено успішно";
-                // Оновити $post, щоб відобразити нові дані в формі після оновлення
-                $post['title'] = $title;
-                $post['category_id'] = $category_id;
-                $post['content'] = $content;
-                $post['image'] = $image_name;
-            } else {
-                $errors[] = "Помилка при оновленні посту: " . $stmt->error;
-            }
-        }
+    if (!empty($title) && !empty($content) && $category_id) {
+        $stmt_update = $conn->prepare("UPDATE posts SET title = ?, content = ?, image = ?, category_id = ? WHERE id = ? AND user_id = ?");
+        $stmt_update->bind_param("sssiii", $title, $content, $image, $category_id, $post_id, $user_id);
+        $stmt_update->execute();
+        $message = "Пост успішно оновлено!";
+        $current_category_id = $category_id;
+    } else {
+        $message = "Заповніть всі поля!";
     }
 }
-
-// Отримуємо категорії для select
-$categories_result = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 ?>
 
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Редагувати пост</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
-
-<div class="container mt-5">
-    <h1>Редагувати пост</h1>
+<div class="container py-5">
+    <h2 class="mb-4">Редагувати пост</h2>
 
     <?php if (!empty($message)): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
-    <?php endif; ?>
-
-    <?php if (!empty($errors)): ?>
-        <div class="alert alert-danger">
-            <?php foreach ($errors as $error): ?>
-                <div><?= htmlspecialchars($error) ?></div>
-            <?php endforeach; ?>
+        <div class="alert <?= strpos($message, 'успішно') !== false ? 'alert-success' : 'alert-danger' ?>">
+            <?= $message ?>
         </div>
     <?php endif; ?>
 
-    <form action="edit_post.php?id=<?= $post_id ?>" method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" class="bg-white p-4 shadow rounded">
         <div class="mb-3">
-            <label for="title" class="form-label">Заголовок:</label>
-            <input type="text" id="title" name="title" class="form-control" value="<?= htmlspecialchars($post['title']) ?>" required>
+            <label class="form-label">Заголовок:</label>
+            <input type="text" name="title" class="form-control" value="<?= htmlspecialchars($title) ?>" required />
         </div>
+
         <div class="mb-3">
-            <label for="category" class="form-label">Категорія:</label>
-            <select id="category" name="category" class="form-select" required>
+            <label class="form-label">Категорія:</label>
+            <select name="category_id" class="form-select" required>
                 <option value="">Оберіть категорію</option>
-                <?php while ($row = $categories_result->fetch_assoc()): ?>
-                    <option value="<?= $row['id'] ?>" <?= ($row['id'] == $post['category_id']) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($row['name']) ?>
+                <?php while ($cat = $categories_result->fetch_assoc()): ?>
+                    <option value="<?= $cat['id'] ?>" <?= ($cat['id'] == $current_category_id) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($cat['name']) ?>
                     </option>
                 <?php endwhile; ?>
             </select>
         </div>
+
         <div class="mb-3">
-            <label for="content" class="form-label">Вміст:</label>
-            <textarea id="content" name="content" class="form-control" rows="5" required><?= htmlspecialchars($post['content']) ?></textarea>
+            <label class="form-label">Вміст:</label>
+            <textarea name="content" class="form-control" rows="6" required><?= htmlspecialchars($content) ?></textarea>
         </div>
+
         <div class="mb-3">
-            <label for="image" class="form-label">Нове зображення (за бажанням):</label>
-            <input type="file" id="image" name="image" class="form-control">
-            <?php if (!empty($post['image']) && file_exists('uploads/' . $post['image'])): ?>
-                <img src="uploads/<?= htmlspecialchars($post['image']) ?>" alt="Поточне зображення" class="img-fluid mt-2" style="max-height: 150px;">
-            <?php endif; ?>
+            <label class="form-label">Нове зображення (за бажанням):</label>
+            <input type="file" name="image" class="form-control" />
         </div>
-        <button type="submit" class="btn btn-primary">Оновити пост</button>
-        <a href="index.php" class="btn btn-secondary">Назад</a>
+
+        <?php if (!empty($image) && file_exists('uploads/' . $image)): ?>
+            <div class="mb-3">
+                <label class="form-label">Поточне зображення:</label><br />
+                <img src="uploads/<?= htmlspecialchars($image) ?>" alt="Поточне зображення" class="img-fluid rounded" style="max-width: 300px; height: auto;" />
+            </div>
+        <?php endif; ?>
+
+        <button class="btn btn-success">💾 Оновити</button>
+        <a href="my_posts.php" class="btn btn-secondary">↩ Назад</a>
     </form>
 </div>
 

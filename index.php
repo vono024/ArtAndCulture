@@ -6,7 +6,6 @@ require_once 'db.php';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $category_id = isset($_GET['category_id']) ? (int)$_GET['category_id'] : 0;
 
-// Отримуємо всі категорії
 $categories_result = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
 
 $sql = "SELECT posts.*, users.username, categories.name AS category_name FROM posts 
@@ -35,19 +34,36 @@ $result = $conn->query($sql);
     <title>Блог: Мистецтво та культура</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .post-image {
+            max-height: 250px;
+            object-fit: cover;
+            width: 100%;
+        }
+        @media (max-width: 767.98px) {
+            .card-body {
+                padding-top: 1rem !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
         <a class="navbar-brand" href="index.php">Блог</a>
-        <div class="collapse navbar-collapse">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav ms-auto">
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <li class="nav-item me-3">
-                        <span class="navbar-text text-white">
-                            Вітаємо, <?= htmlspecialchars($_SESSION['username']) ?>
-                        </span>
+            <span class="navbar-text text-white">
+              Вітаємо, <?= htmlspecialchars($_SESSION['username']) ?>
+            </span>
                     </li>
                     <li class="nav-item">
                         <a class="btn btn-sm btn-outline-light" href="logout.php">Вихід</a>
@@ -100,12 +116,12 @@ $result = $conn->query($sql);
     <?php else: ?>
         <?php while ($row = $result->fetch_assoc()): ?>
             <div class="card mb-4 shadow-sm">
-                <div class="row g-0">
+                <div class="row g-0 align-items-center">
                     <div class="col-md-4">
                         <?php if (!empty($row['image']) && file_exists('uploads/' . $row['image'])): ?>
-                            <img src="uploads/<?= htmlspecialchars($row['image']) ?>" class="img-fluid rounded-start" alt="Зображення посту">
+                            <img src="uploads/<?= htmlspecialchars($row['image']) ?>" alt="Зображення посту" class="post-image rounded-start">
                         <?php else: ?>
-                            <img src="https://via.placeholder.com/400x300?text=No+Image" class="img-fluid rounded-start" alt="Немає зображення">
+                            <img src="https://via.placeholder.com/400x250?text=No+Image" alt="Немає зображення" class="post-image rounded-start">
                         <?php endif; ?>
                     </div>
                     <div class="col-md-8">

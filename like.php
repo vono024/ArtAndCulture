@@ -11,19 +11,16 @@ if (!isset($_SESSION['user_id']) || !isset($_GET['post_id'])) {
 $user_id = $_SESSION['user_id'];
 $post_id = (int)$_GET['post_id'];
 
-// Перевіряємо, чи лайк вже поставлений
 $stmt = $conn->prepare("SELECT id FROM likes WHERE user_id = ? AND post_id = ?");
 $stmt->bind_param("ii", $user_id, $post_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
-    // Видаляємо лайк (анлайк)
     $stmt = $conn->prepare("DELETE FROM likes WHERE user_id = ? AND post_id = ?");
     $stmt->bind_param("ii", $user_id, $post_id);
     $stmt->execute();
 } else {
-    // Додаємо лайк
     $stmt = $conn->prepare("INSERT INTO likes (user_id, post_id) VALUES (?, ?)");
     $stmt->bind_param("ii", $user_id, $post_id);
     $stmt->execute();

@@ -39,9 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Вхід</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
 
@@ -55,12 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="post" class="bg-white p-4 shadow rounded" novalidate>
         <div class="mb-3">
             <label for="email" class="form-label">Email:</label>
-            <input type="email" id="email" name="email" class="form-control" value="<?= htmlspecialchars($email) ?>" required>
+            <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    class="form-control"
+                    value="<?= htmlspecialchars($email) ?>"
+                    required
+                    autofocus
+            />
         </div>
 
         <div class="mb-3">
             <label for="password" class="form-label">Пароль:</label>
-            <input type="password" id="password" name="password" class="form-control" required>
+            <input type="password" id="password" name="password" class="form-control" required />
         </div>
 
         <button type="submit" class="btn btn-primary">Увійти</button>

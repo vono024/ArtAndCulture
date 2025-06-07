@@ -10,7 +10,6 @@ if (!isset($_GET['id'])) {
 
 $post_id = (int)$_GET['id'];
 
-// Отримуємо пост з автором та назвою категорії
 $stmt = $conn->prepare("
     SELECT posts.*, users.username, categories.name AS category_name
     FROM posts
@@ -29,14 +28,12 @@ if ($post_result->num_rows === 0) {
 
 $post = $post_result->fetch_assoc();
 
-// Отримуємо кількість лайків для поста
 $stmt = $conn->prepare("SELECT COUNT(*) as total FROM likes WHERE post_id = ?");
 $stmt->bind_param("i", $post_id);
 $stmt->execute();
 $like_result = $stmt->get_result();
 $likes = $like_result->fetch_assoc()['total'];
 
-// Перевіряємо, чи лайкнув користувач
 $liked = false;
 if (isset($_SESSION['user_id'])) {
     $stmt = $conn->prepare("SELECT id FROM likes WHERE user_id = ? AND post_id = ?");
@@ -46,7 +43,6 @@ if (isset($_SESSION['user_id'])) {
     $liked = $res->num_rows > 0;
 }
 
-// Обробка додавання коментаря
 $message = '';
 if (isset($_SESSION['user_id']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment'])) {
     $comment_text = trim($_POST['comment']);
@@ -55,13 +51,12 @@ if (isset($_SESSION['user_id']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isse
         $stmt = $conn->prepare("INSERT INTO comments (content, user_id, post_id, created_at) VALUES (?, ?, ?, NOW())");
         $stmt->bind_param("sii", $comment_text, $user_id, $post_id);
         $stmt->execute();
-        $message = "✅ Коментар додано!";
+        $message = "Коментар додано!";
     } else {
-        $message = "❌ Коментар не може бути пустим.";
+        $message = "Коментар не може бути пустим.";
     }
 }
 
-// Отримуємо коментарі
 $stmt = $conn->prepare("
     SELECT comments.*, users.username 
     FROM comments 
@@ -77,16 +72,21 @@ $comments_result = $stmt->get_result();
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title><?= htmlspecialchars($post['title']) ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
         <a class="navbar-brand" href="index.php">Блог</a>
-        <div class="collapse navbar-collapse">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Перемкнути навігацію">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <li class="nav-item me-3">
@@ -119,22 +119,22 @@ $comments_result = $stmt->get_result();
     </p>
 
     <?php if (!empty($post['image']) && file_exists('uploads/' . $post['image'])): ?>
-        <img src="uploads/<?= htmlspecialchars($post['image']) ?>" alt="Зображення поста" class="img-fluid mb-4" style="max-height: 400px; object-fit: cover;">
+        <img src="uploads/<?= htmlspecialchars($post['image']) ?>" alt="Зображення поста"
+             class="img-fluid mb-4 w-100" style="max-height: 400px; object-fit: cover;">
     <?php endif; ?>
 
-    <p><?= nl2br(htmlspecialchars($post['content'])) ?></p>
+    <p class="fs-5"><?= nl2br(htmlspecialchars($post['content'])) ?></p>
 
-    <!-- Блок лайків -->
-    <div class="mb-3">
+    <div class="mb-3 d-flex align-items-center gap-3">
         <?php if (isset($_SESSION['user_id'])): ?>
-            <form method="get" action="like.php">
-                <input type="hidden" name="post_id" value="<?= $post_id ?>">
+            <form method="get" action="like.php" class="d-inline">
+                <input type="hidden" name="post_id" value="<?= $post_id ?>" />
                 <button type="submit" class="btn <?= $liked ? 'btn-danger' : 'btn-outline-primary' ?>">
                     <?= $liked ? '👎 Прибрати лайк' : '👍 Лайкнути' ?> (<?= $likes ?>)
                 </button>
             </form>
         <?php else: ?>
-            <p>Лайки: <?= $likes ?>. <a href="login.php">Увійдіть</a>, щоб поставити лайк.</p>
+            <p class="mb-0">Лайки: <?= $likes ?>. <a href="login.php">Увійдіть</a>, щоб поставити лайк.</p>
         <?php endif; ?>
     </div>
 
@@ -153,8 +153,9 @@ $comments_result = $stmt->get_result();
     <?php else: ?>
         <?php while ($comment = $comments_result->fetch_assoc()): ?>
             <div class="mb-3 border rounded p-3 bg-white shadow-sm">
-                <p><strong><?= htmlspecialchars($comment['username']) ?></strong> <small class="text-muted"><?= $comment['created_at'] ?></small></p>
-                <p><?= nl2br(htmlspecialchars($comment['content'])) ?></p>
+                <p class="mb-1"><strong><?= htmlspecialchars($comment['username']) ?></strong>
+                    <small class="text-muted"><?= $comment['created_at'] ?></small></p>
+                <p class="mb-0"><?= nl2br(htmlspecialchars($comment['content'])) ?></p>
             </div>
         <?php endwhile; ?>
     <?php endif; ?>

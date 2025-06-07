@@ -35,11 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("INSERT INTO posts (title, content, image, user_id, category_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("sssii", $title, $content, $image, $user_id, $category_id);
         $stmt->execute();
-        $message = "✅ Пост успішно додано!";
+        $message = "Пост успішно додано!";
         $title = $content = '';
         $category_id = '';
     } else {
-        $message = "❌ Заповніть всі поля!";
+        $message = "Заповніть всі поля!";
     }
 }
 ?>
@@ -47,9 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Новий пост</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
 
@@ -65,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="post" enctype="multipart/form-data" class="bg-white p-4 shadow rounded">
         <div class="mb-3">
             <label class="form-label">Заголовок:</label>
-            <input type="text" name="title" class="form-control" value="<?= htmlspecialchars($title) ?>" required>
+            <input type="text" name="title" class="form-control" value="<?= htmlspecialchars($title) ?>" required />
         </div>
         <div class="mb-3">
             <label class="form-label">Категорія:</label>
@@ -84,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="mb-3">
             <label class="form-label">Зображення (необов'язково):</label>
-            <input type="file" name="image" class="form-control">
+            <input type="file" name="image" class="form-control" />
         </div>
         <button class="btn btn-success">💾 Зберегти</button>
         <a href="index.php" class="btn btn-secondary">↩ Назад</a>
