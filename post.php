@@ -3,30 +3,75 @@ session_start();
 require_once 'db.php';
 /** @var mysqli $conn */
 
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+if (!isset($_GET['id'])) {
     header("Location: index.php");
     exit;
 }
 
 $post_id = (int)$_GET['id'];
 
-$post_stmt = $conn->prepare("SELECT posts.*, users.username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?");
-$post_stmt->bind_param("i", $post_id);
-$post_stmt->execute();
-$post_result = $post_stmt->get_result();
-$post = $post_result->fetch_assoc();
+// Отримуємо пост з автором та назвою категорії
+$stmt = $conn->prepare("
+    SELECT posts.*, users.username, categories.name AS category_name
+    FROM posts
+    JOIN users ON posts.user_id = users.id
+    JOIN categories ON posts.category_id = categories.id
+    WHERE posts.id = ?
+");
+$stmt->bind_param("i", $post_id);
+$stmt->execute();
+$post_result = $stmt->get_result();
 
-if (!$post) {
+if ($post_result->num_rows === 0) {
     echo "Пост не знайдено.";
     exit;
 }
 
-// Отримати коментарі
-$comments = $conn->query("SELECT comments.*, users.username FROM comments JOIN users ON comments.user_id = users.id WHERE post_id = $post_id ORDER BY created_at DESC");
+$post = $post_result->fetch_assoc();
 
-// Отримати кількість лайків
-$likes_result = $conn->query("SELECT COUNT(*) as total FROM likes WHERE post_id = $post_id");
-$likes = $likes_result->fetch_assoc()['total'];
+// Отримуємо кількість лайків для поста
+$stmt = $conn->prepare("SELECT COUNT(*) as total FROM likes WHERE post_id = ?");
+$stmt->bind_param("i", $post_id);
+$stmt->execute();
+$like_result = $stmt->get_result();
+$likes = $like_result->fetch_assoc()['total'];
+
+// Перевіряємо, чи лайкнув користувач
+$liked = false;
+if (isset($_SESSION['user_id'])) {
+    $stmt = $conn->prepare("SELECT id FROM likes WHERE user_id = ? AND post_id = ?");
+    $stmt->bind_param("ii", $_SESSION['user_id'], $post_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $liked = $res->num_rows > 0;
+}
+
+// Обробка додавання коментаря
+$message = '';
+if (isset($_SESSION['user_id']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment'])) {
+    $comment_text = trim($_POST['comment']);
+    if (!empty($comment_text)) {
+        $user_id = $_SESSION['user_id'];
+        $stmt = $conn->prepare("INSERT INTO comments (content, user_id, post_id, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt->bind_param("sii", $comment_text, $user_id, $post_id);
+        $stmt->execute();
+        $message = "✅ Коментар додано!";
+    } else {
+        $message = "❌ Коментар не може бути пустим.";
+    }
+}
+
+// Отримуємо коментарі
+$stmt = $conn->prepare("
+    SELECT comments.*, users.username 
+    FROM comments 
+    JOIN users ON comments.user_id = users.id 
+    WHERE comments.post_id = ? 
+    ORDER BY comments.created_at DESC
+");
+$stmt->bind_param("i", $post_id);
+$stmt->execute();
+$comments_result = $stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -38,54 +83,92 @@ $likes = $likes_result->fetch_assoc()['total'];
 </head>
 <body class="bg-light">
 
-<div class="container py-5">
-    <a href="index.php" class="btn btn-secondary mb-4">← Назад</a>
-
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h2 class="card-title"><?= htmlspecialchars($post['title']) ?></h2>
-            <p class="text-muted">Автор: <?= htmlspecialchars($post['username']) ?> | <?= $post['created_at'] ?></p>
-
-            <?php if (!empty($post['image']) && file_exists('uploads/' . $post['image'])): ?>
-                <img src="uploads/<?= htmlspecialchars($post['image']) ?>" class="img-fluid rounded mb-3">
-            <?php endif; ?>
-
-            <p class="card-text"><?= nl2br(htmlspecialchars($post['content'])) ?></p>
-
-            <div class="mt-4">
-                <form method="post" action="like.php" class="d-inline">
-                    <input type="hidden" name="post_id" value="<?= $post_id ?>">
-                    <button class="btn btn-outline-danger">❤️ Лайк (<?= $likes ?>)</button>
-                </form>
-            </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="index.php">Блог</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav ms-auto">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <li class="nav-item me-3">
+                        <span class="navbar-text text-white">
+                            Вітаємо, <?= htmlspecialchars($_SESSION['username']) ?>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-sm btn-outline-light" href="logout.php">Вихід</a>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="btn btn-sm btn-outline-light me-2" href="login.php">Увійти</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-sm btn-outline-success" href="register.php">Реєстрація</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
         </div>
     </div>
+</nav>
 
-    <h4 class="mb-3">Коментарі</h4>
+<div class="container">
+    <h1><?= htmlspecialchars($post['title']) ?></h1>
+    <p class="text-muted">
+        Автор: <?= htmlspecialchars($post['username']) ?> |
+        Дата: <?= $post['created_at'] ?> |
+        Категорія: <?= htmlspecialchars($post['category_name']) ?>
+    </p>
 
-    <?php if ($comments->num_rows === 0): ?>
+    <?php if (!empty($post['image']) && file_exists('uploads/' . $post['image'])): ?>
+        <img src="uploads/<?= htmlspecialchars($post['image']) ?>" alt="Зображення поста" class="img-fluid mb-4" style="max-height: 400px; object-fit: cover;">
+    <?php endif; ?>
+
+    <p><?= nl2br(htmlspecialchars($post['content'])) ?></p>
+
+    <!-- Блок лайків -->
+    <div class="mb-3">
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <form method="get" action="like.php">
+                <input type="hidden" name="post_id" value="<?= $post_id ?>">
+                <button type="submit" class="btn <?= $liked ? 'btn-danger' : 'btn-outline-primary' ?>">
+                    <?= $liked ? '👎 Прибрати лайк' : '👍 Лайкнути' ?> (<?= $likes ?>)
+                </button>
+            </form>
+        <?php else: ?>
+            <p>Лайки: <?= $likes ?>. <a href="login.php">Увійдіть</a>, щоб поставити лайк.</p>
+        <?php endif; ?>
+    </div>
+
+    <hr>
+
+    <h4>Коментарі</h4>
+
+    <?php if ($message): ?>
+        <div class="alert <?= strpos($message, '✅') !== false ? 'alert-success' : 'alert-danger' ?>">
+            <?= $message ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($comments_result->num_rows === 0): ?>
         <p class="text-muted">Коментарів ще немає.</p>
     <?php else: ?>
-        <?php while ($c = $comments->fetch_assoc()): ?>
-            <div class="border rounded p-3 mb-2 bg-white shadow-sm">
-                <strong><?= htmlspecialchars($c['username']) ?></strong>
-                <span class="text-muted small"> | <?= $c['created_at'] ?></span>
-                <p class="mb-0"><?= nl2br(htmlspecialchars($c['text'])) ?></p>
+        <?php while ($comment = $comments_result->fetch_assoc()): ?>
+            <div class="mb-3 border rounded p-3 bg-white shadow-sm">
+                <p><strong><?= htmlspecialchars($comment['username']) ?></strong> <small class="text-muted"><?= $comment['created_at'] ?></small></p>
+                <p><?= nl2br(htmlspecialchars($comment['content'])) ?></p>
             </div>
         <?php endwhile; ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['user_id'])): ?>
-        <form method="post" action="comment.php" class="mt-4">
-            <input type="hidden" name="post_id" value="<?= $post_id ?>">
+        <form method="post" class="mb-5">
             <div class="mb-3">
-                <label class="form-label">Залишити коментар:</label>
-                <textarea name="text" class="form-control" rows="4" required></textarea>
+                <label for="comment" class="form-label">Додати коментар</label>
+                <textarea name="comment" id="comment" class="form-control" rows="3" required></textarea>
             </div>
-            <button class="btn btn-primary">💬 Додати</button>
+            <button class="btn btn-primary">Відправити</button>
         </form>
     <?php else: ?>
-        <p class="mt-4">Щоб додати коментар — <a href="login.php">увійдіть</a>.</p>
+        <p><a href="login.php">Увійдіть</a>, щоб додати коментар.</p>
     <?php endif; ?>
 </div>
 

@@ -3,30 +3,42 @@ session_start();
 require_once 'db.php';
 /** @var mysqli $conn */
 
-if (!isset($_SESSION['user_id'], $_GET['id'])) {
-    header("Location: index.php");
-    exit();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+if (!isset($_GET['id'])) {
+    header("Location: my_posts.php");
+    exit;
 }
 
 $post_id = (int)$_GET['id'];
 $user_id = $_SESSION['user_id'];
 
-// Перевірка, чи пост належить цьому користувачу
-$stmt = $conn->prepare("SELECT user_id FROM posts WHERE id = ?");
-if ($stmt) {
-    $stmt->bind_param("i", $post_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
+// Перевірка власника поста
+$stmt = $conn->prepare("SELECT image FROM posts WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $post_id, $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($row = $res->fetch_assoc()) {
-        if ($row['user_id'] == $user_id) {
-            $del = $conn->prepare("DELETE FROM posts WHERE id = ?");
-            if ($del) {
-                $del->bind_param("i", $post_id);
-                $del->execute();
-            }
-        }
-    }
+if ($result->num_rows === 0) {
+    // Пост не знайдено або не власник
+    header("Location: my_posts.php");
+    exit;
 }
-header("Location: index.php");
-exit();
+
+$post = $result->fetch_assoc();
+
+// Видаляємо файл зображення, якщо є
+if (!empty($post['image']) && file_exists('uploads/' . $post['image'])) {
+    unlink('uploads/' . $post['image']);
+}
+
+// Видаляємо пост з БД
+$del = $conn->prepare("DELETE FROM posts WHERE id = ? AND user_id = ?");
+$del->bind_param("ii", $post_id, $user_id);
+$del->execute();
+
+header("Location: my_posts.php");
+exit;

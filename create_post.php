@@ -11,11 +11,15 @@ if (!isset($_SESSION['user_id'])) {
 $title = '';
 $content = '';
 $image = '';
+$category_id = '';
 $message = '';
+
+$categories_result = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title']);
     $content = trim($_POST['content']);
+    $category_id = (int)$_POST['category_id'];
     $user_id = $_SESSION['user_id'];
 
     if (!empty($_FILES['image']['name'])) {
@@ -27,12 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (!empty($title) && !empty($content)) {
-        $stmt = $conn->prepare("INSERT INTO posts (title, content, image, user_id, created_at) VALUES (?, ?, ?, ?, NOW())");
-        $stmt->bind_param("sssi", $title, $content, $image, $user_id);
+    if (!empty($title) && !empty($content) && $category_id) {
+        $stmt = $conn->prepare("INSERT INTO posts (title, content, image, user_id, category_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssii", $title, $content, $image, $user_id, $category_id);
         $stmt->execute();
         $message = "✅ Пост успішно додано!";
         $title = $content = '';
+        $category_id = '';
     } else {
         $message = "❌ Заповніть всі поля!";
     }
@@ -52,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h2 class="mb-4">➕ Додати новий пост</h2>
 
     <?php if (!empty($message)): ?>
-        <div class="alert <?= strpos($message, 'успішно') ? 'alert-success' : 'alert-danger' ?>">
+        <div class="alert <?= strpos($message, 'успішно') !== false ? 'alert-success' : 'alert-danger' ?>">
             <?= $message ?>
         </div>
     <?php endif; ?>
@@ -61,6 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="mb-3">
             <label class="form-label">Заголовок:</label>
             <input type="text" name="title" class="form-control" value="<?= htmlspecialchars($title) ?>" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Категорія:</label>
+            <select name="category_id" class="form-select" required>
+                <option value="">Оберіть категорію</option>
+                <?php while ($cat = $categories_result->fetch_assoc()): ?>
+                    <option value="<?= $cat['id'] ?>" <?= ($cat['id'] == $category_id) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($cat['name']) ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
         </div>
         <div class="mb-3">
             <label class="form-label">Вміст:</label>
